@@ -308,7 +308,7 @@ public class awsTest {
 	                "Successfully rebooted instance %s", instance_id);
 	     }
 	    
-	   //---------------------8. RebootInstance----------------
+	   //---------------------8. list images----------------
 	   
 	
 }
