@@ -2,14 +2,30 @@ package awsTest;
 
 import java.util.Scanner;
 
+
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+
+import com.amazonaws.services.ec2.model.Image;
+import com.amazonaws.services.ec2.model.DescribeImagesRequest;
+import com.amazonaws.services.ec2.model.DescribeImagesResult;
+
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Reservation;
+import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
+
+
+import com.amazonaws.services.ec2.model.RunInstancesRequest;
+import com.amazonaws.services.ec2.model.RunInstancesResult;
+
+import com.amazonaws.services.ec2.model.DescribeRegionsResult;
+import com.amazonaws.services.ec2.model.Region;
+import com.amazonaws.services.ec2.model.AvailabilityZone;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 
 import com.amazonaws.services.ec2.model.DryRunResult;
 import com.amazonaws.services.ec2.model.DryRunSupportedRequest;
@@ -62,20 +78,12 @@ public class awsTest {
 			System.out.println(" 3. start instance 4. available regions ");
 			System.out.println(" 5. stop instance 6. create instance ");
 			System.out.println(" 7. reboot instance 8. list images ");
+			System.out.println(" 9. DeleteInstance");
 			System.out.println(" 99. quit ");
 			System.out.println("------------------------------------------------------------");
 			System.out.print("Enter an integer:");
 
 			number = menu.nextInt();
-
-			/*
-			 * 	check list
-			 * 	2, 4, 6
-			 * 
-			 * must be implemented list
-			 * 8(list images)
-			 * 
-			 * */
 			switch (number) {
 			case 1:		//list
 				listInstances();
@@ -89,7 +97,7 @@ public class awsTest {
 				System.out.print("Write instance ID : ");
 				inst_id = id_string.nextLine();
 				//startInstance(i-01ab24c24bba59b0b);
-				startInstance("inst_id");
+				startInstance(inst_id);
 				break;
 				
 			case 4:		//availabe regions
@@ -113,9 +121,15 @@ public class awsTest {
 				break;
 				
 			case 8:		//list images
+				ListImages();
 				break;
 				
+			case 9:
+				DeleteInstance();
+				break;
 			case 99:
+				System.out.println("Quit.... The Program is shutdowned");
+				System.exit(0);
 				break;
 			}
 		}
@@ -164,7 +178,7 @@ public class awsTest {
             System.out.printf(
                 "Found availability zone %s " +
                 "with status %s " +
-                "in region %s",
+                "in region %s\n",
                 zone.getZoneName(),
                 zone.getState(),
                 zone.getRegionName());
@@ -208,7 +222,7 @@ public class awsTest {
 	        for(Region region : regions_response.getRegions()) {
 	            System.out.printf(
 	                "Found region %s " +
-	                "with endpoint %s",
+	                "with endpoint %s\n",
 	                region.getRegionName(),
 	                region.getEndpoint());
 	        }
@@ -245,46 +259,31 @@ public class awsTest {
 	  //---------------------6. Create Instance---------------
         public static void createinstance()
         {
-            final String USAGE =
-                "To run this example, supply an instance name and AMI image id\n" +
-                "Ex: CreateInstance <instance-name> <ami-image-id>\n";
-
-            if (args.length != 2) {
-                System.out.println(USAGE);
-                System.exit(1);
-            }
-            Scanner S_name = new Scanner(System.in);
-            Scanner S_ami_id = new Scanner(System.in);
-            String name;
-            String ami_id;
-            
-            System.out.print("Write name : ");
-            name = S_name.nextLine();
-            System.out.print("Write ami_id : ");
-            ami_id = S_ami_id.nextLine();
-            
-            RunInstancesRequest run_request = new RunInstancesRequest()
-                .withImageId(ami_id)
-                .withInstanceType(InstanceType.T1Micro)
-                .withMaxCount(1)
-                .withMinCount(1);
-
-            RunInstancesResult run_response = ec2.runInstances(run_request);
-
-            String reservation_id = run_response.getReservation().getInstances().get(0).getInstanceId();
-
-            Tag tag = new Tag()
-                .withKey("Name")
-                .withValue(name);
-
-            CreateTagsRequest tag_request = new CreateTagsRequest()
-                .withTags(tag);
-
-            CreateTagsResult tag_response = ec2.createTags(tag_request);
-
-            System.out.printf(
-                "Successfully started EC2 instance %s based on AMI %s",
-                reservation_id, ami_id);
+        	try {
+        		Scanner keyNameTemp = new Scanner(System.in);
+            	String keyName;
+            	Scanner imageTemp = new Scanner(System.in);
+    			String imageId ; // Basic 32-bit Amazon Linux AMI
+    			String instanceType = "t2.micro";
+    			int minInstanceCount = 1; // create 1 instance
+    			int maxInstanceCount = 1;
+    			
+    			System.out.print("write your keyName: ");
+    			keyName = keyNameTemp.nextLine();
+    			System.out.print("write your imageID: ");
+    			imageId = imageTemp.nextLine();
+    			
+    			RunInstancesRequest rir = new RunInstancesRequest();
+    			rir.withImageId(imageId).withInstanceType(instanceType).withMinCount(minInstanceCount)
+    					.withMaxCount(maxInstanceCount).withKeyName(keyName);
+    			RunInstancesResult result = ec2.runInstances(rir);
+    			System.out.printf("Succecfully Created The Instance from imageID : %s \n",imageId);
+        	}catch(Exception e)
+        	{
+        		System.out.println("Ther are Unexpected ERROR");
+        		System.out.println("This Function is shutdowned");
+        		return;
+        	}
         }
 	    
 	  //---------------------7. RebootInstance----------------
@@ -309,6 +308,33 @@ public class awsTest {
 	     }
 	    
 	   //---------------------8. list images----------------
-	   
-	
+	    public static void ListImages() {
+			System.out.println("Loading images......");
+			
+			DescribeImagesRequest request = new DescribeImagesRequest().withOwners("self");
+			DescribeImagesResult Images = ec2.describeImages(request);
+			for (Image Im : Images.getImages()) {
+				System.out.printf("[AMIid] %s, [AMI Status] %s, [AMIname] %s \n", Im.getImageId(), Im.getState(),
+						Im.getName());
+			}
+	    }
+	    
+	    //---------------------- 9 DeleteInstance -----------------
+	    public static void DeleteInstance()
+	    {
+	    	System.out.print("Write Instance-ID for Delete : ");
+	    	Scanner sdel_id = new Scanner(System.in);
+	    	String del_id ;
+	    	del_id = sdel_id.nextLine();
+	    	try {
+	    		TerminateInstancesRequest request = new TerminateInstancesRequest().withInstanceIds(del_id);
+				ec2.terminateInstances(request);
+				System.out.printf("Successfuly Delete ID : %s\n",del_id);
+	    	}catch(Exception e){
+	    		System.out.println("! There are Unexcepted Error");
+	    		System.out.println("! Failed Delete");
+	    	}
+	    	
+	    	
+	    }
 }
